@@ -1,0 +1,17 @@
+{
+  "n_members": 1500,
+  "n_member_months": 27000,
+  "did_cost_effect_dollars_per_member_month": -93.54,
+  "did_cost_effect_pct": -10.6,
+  "did_cost_pvalue": 0.0,
+  "did_er_effect_pct": -23.2,
+  "did_er_pvalue": 0.0,
+  "risk_model_auc": 0.958,
+  "risk_model_feature_importance": {
+    "age": 0.021,
+    "risk_score": 0.886,
+    "pre_avg_cost": 0.052,
+    "pre_avg_er": 0.006,
+    "treated": 0.035
+  }
+}
