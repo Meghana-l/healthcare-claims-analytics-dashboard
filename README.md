@@ -12,7 +12,8 @@ A healthcare claims analysis built on simulated data: where the cost sits, what 
 
 ### 1. Summary numbers
 
-![Summary KPIs](screenshots/kpis.png)
+<img width="1147" height="187" alt="Screenshot 2026-10-18 131709" src="https://github.com/user-attachments/assets/1e1e0d8b-0d78-4298-8362-ab0455173301" />
+
 
 Four headline numbers at the top:
 
@@ -27,7 +28,8 @@ Every card has a **View data** button that opens the exact numbers behind it, so
 
 ### 2. Cost concentration by risk tier
 
-![Cost concentration by risk tier](screenshots/cost-by-risk-tier.png)
+<img width="1121" height="348" alt="Screenshot 2026-10-18 132622" src="https://github.com/user-attachments/assets/ac30be25-6077-4242-ad28-4047cbdf5794" />
+
 
 Members are split into three equal-sized groups (Low, Medium, High) based on how chronically ill they are. Each group is exactly a third of the population, but they don't spend the same amount.
 
@@ -37,7 +39,8 @@ The High group is a third of the members but close to half of the total cost. Th
 
 ### 3. Cost by diagnosis category
 
-![Cost by diagnosis category](screenshots/cost-by-diagnosis.png)
+<img width="1121" height="371" alt="Screenshot 2026-10-18 131728" src="https://github.com/user-attachments/assets/2eeb6604-9fa7-4b3c-9628-194ccb878d78" />
+
 
 This breaks down average monthly cost by condition (CHF, hypertension, diabetes, behavioral health, COPD). The costs across conditions are fairly close to each other.
 
@@ -47,7 +50,8 @@ The takeaway: the diagnosis a member has doesn't explain cost nearly as well as 
 
 ### 4. Cost driver regression
 
-![Cost driver regression](screenshots/cost-drivers.png)
+<img width="1119" height="394" alt="Screenshot 2026-10-18 131741" src="https://github.com/user-attachments/assets/7d0d1c8b-9471-47ab-9775-f38bb9258297" />
+
 
 This answers "what actually drives cost, once you account for everything at once." A statistical model looks at age, risk score, and diagnosis together and measures how much each one independently pushes cost up.
 
@@ -57,7 +61,8 @@ The chronic risk score is by far the biggest driver (around $192 per point, per 
 
 ### 5. Risk-stratification model
 
-![Risk-stratification model](screenshots/risk-model.png)
+<img width="1128" height="375" alt="Screenshot 2026-10-18 131753" src="https://github.com/user-attachments/assets/c32136f6-3595-4f56-975d-67b380945605" />
+
 
 This is a prediction model: using only data from *before* the program started, can it tell which members are about to become expensive? It's tested only on members it never saw during training, so the result reflects real predictive power, not memorization.
 
@@ -68,7 +73,8 @@ This is a prediction model: using only data from *before* the program started, c
 
 ### 6. Program impact (difference-in-differences)
 
-![Program impact](screenshots/program-impact.png)
+<img width="1118" height="448" alt="Screenshot 2026-10-18 131804" src="https://github.com/user-attachments/assets/76343f10-4915-414f-8fdd-67d03606c2fc" />
+
 
 This checks whether the care management program actually worked, the right way. You can't just compare a member's cost before vs. after the program, because costs drift for everyone over time regardless (seasons, inflation, etc). Instead, this compares the *change* in enrolled members against the *change* in a similar group that wasn't enrolled, over the same period.
 
