@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Claims Analytics Dashboard — Care Management Program Review</title>
+<meta name="description" content="Healthcare claims analytics dashboard: cost concentration, cost drivers, risk stratification, and program impact evaluation.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📊</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --green:#56B948; --green-dark:#3C8A32; --green-tint:#EAF7E7;
+    --blue:#0982C6; --blue-tint:#E6F3FA;
+    --orange:#F8971F; --orange-tint:#FDF0DE;
+    --bg:#F5F7F6; --card:#FFFFFF; --border:#E2E8E5;
+    --ink:#1E2A24; --muted:#657068; --muted-2:#8B948E;
+    --radius:12px; --radius-sm:8px;
+    color-scheme: light;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-padding-top:env(safe-area-inset-top,0px);}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased;
+    padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  .tnum{font-variant-numeric: tabular-nums;}
+  .wrap{max-width:1140px; margin:0 auto; padding:0 20px;}
+  a{color:var(--blue); text-decoration:none;}
+  a:hover{text-decoration:underline;}
+  button{font-family:inherit;}
+
+  /* ---- top bar ---- */
+  header.top{
+    background:var(--card); border-bottom:1px solid var(--border);
+    position:sticky; top:0; z-index:10;
+    padding-top:env(safe-area-inset-top,0px);
+  }
+  header.top .row{
+    max-width:1140px; margin:0 auto; padding:14px 20px;
+    display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
+  }
+  .brand{display:flex; align-items:center; gap:10px; font-weight:700; font-size:16px;}
+  .brand .dot{width:11px; height:11px; border-radius:50%; background:var(--green); display:inline-block;}
+  .brand .sub{font-weight:500; color:var(--muted); font-size:13px; border-left:1px solid var(--border); padding-left:10px; margin-left:2px;}
+  header.top nav{display:flex; gap:18px; font-size:13.5px; font-weight:500; color:var(--muted);}
+  header.top nav a{color:var(--muted);}
+  header.top nav a:hover{color:var(--ink);}
+
+  .badge-row{display:flex; align-items:center; gap:10px; padding:18px 0 4px; flex-wrap:wrap;}
+  .badge{
+    font-size:12.5px; font-weight:600; padding:4px 11px; border-radius:999px;
+  }
+  .badge.warn{background:var(--orange-tint); color:#8A5A10;}
+  .badge.ok{background:var(--green-tint); color:var(--green-dark);}
+
+  h1.page-title{font-size:23px; font-weight:800; margin:6px 0 4px; letter-spacing:-0.01em;}
+  p.page-sub{color:var(--muted); font-size:15px; margin:0 0 20px; max-width:72ch;}
+
+  /* ---- KPI cards ---- */
+  .kpi-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin:18px 0 8px;}
+  .kpi{
+    background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
+    padding:16px 18px 14px; border-top:3px solid var(--accent, var(--green));
+  }
+  .kpi .lbl{font-size:12.5px; color:var(--muted); font-weight:600; margin-bottom:8px;}
+  .kpi .num{font-size:27px; font-weight:800; color:var(--ink);}
+  .kpi .ctx{font-size:12.5px; color:var(--muted-2); margin-top:4px; line-height:1.4;}
+  .kpi button.viewlink{
+    margin-top:10px; background:none; border:none; padding:0; cursor:pointer;
+    font-size:12.5px; font-weight:600; color:var(--blue);
+  }
+  .kpi button.viewlink:hover{text-decoration:underline;}
+
+  #kpi-detail{display:none; margin:4px 0 24px;}
+  #kpi-detail.show{display:block;}
+
+  /* ---- panels ---- */
+  .panel{
+    background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
+    padding:18px 20px 20px; margin-bottom:16px;
+  }
+  .panel-head{display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:4px; flex-wrap:wrap;}
+  .panel-head h3{font-size:16.5px; font-weight:700; margin:0;}
+  .panel-head p{font-size:13.5px; color:var(--muted); margin:4px 0 0; max-width:62ch;}
+  .btn-view{
+    background:var(--blue-tint); color:var(--blue); border:none; border-radius:var(--radius-sm);
+    padding:6px 12px; font-size:12.5px; font-weight:600; cursor:pointer; white-space:nowrap;
+  }
+  .btn-view:hover{background:#d5ecf8;}
+  .btn-view.active{background:var(--blue); color:#fff;}
+
+  .two-col{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  .chart-h{height:240px; margin-top:12px;}
+  .chart-h.wide{height:260px;}
+
+  .stat-chips{display:flex; gap:10px; flex-wrap:wrap; margin:12px 0 2px;}
+  .chip{
+    background:var(--green-tint); color:var(--green-dark); font-weight:700; font-size:13px;
+    padding:7px 13px; border-radius:var(--radius-sm); border:1px solid #cfe9c9;
+  }
+  .chip.blue{background:var(--blue-tint); color:#0a5a85; border-color:#c3e1f0;}
+  .chip .k{font-weight:500; opacity:.75; margin-right:4px;}
+
+  .datatable-wrap{display:none; margin-top:14px; border-top:1px dashed var(--border); padding-top:14px;}
+  .datatable-wrap.show{display:block;}
+  table.dt{width:100%; border-collapse:collapse; font-size:13px;}
+  table.dt th{
+    text-align:left; font-weight:600; color:var(--muted); font-size:11.5px;
+    border-bottom:1px solid var(--border); padding:6px 8px; position:sticky; top:0; background:var(--card);
+  }
+  table.dt td{padding:7px 8px; border-bottom:1px solid #EEF1EF;}
+  table.dt td.num, table.dt th.num{text-align:right; font-variant-numeric: tabular-nums;}
+  table.dt tr:last-child td{border-bottom:none;}
+  .table-scroll{max-height:260px; overflow:auto; border:1px solid var(--border); border-radius:var(--radius-sm);}
+  .sig-yes{color:var(--green-dark); font-weight:700;}
+  .sig-no{color:var(--muted-2);}
+
+  .caption{font-size:13px; color:var(--muted); margin-top:10px;}
+
+  /* ---- raw data explorer ---- */
+  .explorer-controls{display:flex; gap:10px; margin-bottom:10px; flex-wrap:wrap;}
+  .explorer-controls input, .explorer-controls select{
+    border:1px solid var(--border); border-radius:var(--radius-sm); padding:7px 10px;
+    font-size:13px; font-family:inherit; background:#fff; color:var(--ink);
+  }
+  th.sortable{cursor:pointer; user-select:none;}
+  th.sortable:hover{color:var(--ink);}
+  th.sortable .arrow{opacity:.5; margin-left:3px;}
+
+  footer{border-top:1px solid var(--border); margin-top:30px; padding:22px 0 50px; color:var(--muted); font-size:13px;}
+  footer .disclosure{
+    background:var(--orange-tint); color:#7a4e0c; padding:9px 14px; border-radius:var(--radius-sm);
+    font-size:12.5px; margin-top:12px; display:inline-block;
+  }
+
+  @media (max-width: 900px){
+    .kpi-grid{grid-template-columns:repeat(2,1fr);}
+    .two-col{grid-template-columns:1fr;}
+  }
+  @media (max-width: 520px){
+    .kpi-grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="row">
+    <div class="brand">
+      <span class="dot"></span> Claims Analytics
+      <span class="sub">Care Management Program Review</span>
+    </div>
+    <nav>
+      <a href="https://meghana-l.github.io/" target="_blank" rel="noopener">Portfolio</a>
+      <a href="https://github.com/Meghana-l/healthcare-claims-analytics-dashboard" target="_blank" rel="noopener">GitHub repo</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="badge-row">
+    <span class="badge warn">⚠ Synthetic data</span>
+    <span class="badge ok">Built by Meghana Lakshminarayana Swamy</span>
+  </div>
+  <h1 class="page-title">Did the Care Management Program work — and who's next?</h1>
+  <p class="page-sub">A simulated book of healthcare claims, analyzed the way a clinical analytics
+  team would: where the cost sits today, what drives it, whether a program changed it, and who to
+  flag before they become expensive. Every number below is clickable — click "View data" on any
+  card or chart to see exactly what it's built from.</p>
+
+  <!-- KPI ROW -->
+  <div class="kpi-grid">
+    <div class="kpi" style="--accent:var(--blue)">
+      <div class="lbl">Members analyzed</div>
+      <div class="num tnum" id="k-members">—</div>
+      <div class="ctx" id="k-members-ctx"></div>
+      <button class="viewlink" data-kpi="members">View data ▾</button>
+    </div>
+    <div class="kpi" style="--accent:var(--orange)">
+      <div class="lbl">Cost held by top risk tier</div>
+      <div class="num tnum" id="k-concentration">—</div>
+      <div class="ctx" id="k-concentration-ctx"></div>
+      <button class="viewlink" data-kpi="concentration">View data ▾</button>
+    </div>
+    <div class="kpi" style="--accent:var(--green)">
+      <div class="lbl">Program cost impact</div>
+      <div class="num tnum" id="k-did">—</div>
+      <div class="ctx" id="k-did-ctx"></div>
+      <button class="viewlink" data-kpi="did">View data ▾</button>
+    </div>
+    <div class="kpi" style="--accent:var(--green)">
+      <div class="lbl">Risk model accuracy (AUC)</div>
+      <div class="num tnum" id="k-auc">—</div>
+      <div class="ctx" id="k-auc-ctx"></div>
+      <button class="viewlink" data-kpi="auc">View data ▾</button>
+    </div>
+  </div>
+
+  <div id="kpi-detail" class="panel"></div>
+
+  <!-- PANEL 1: population -->
+  <div class="panel">
+    <div class="panel-head">
+      <div>
+        <h3>Cost concentration by risk tier</h3>
+        <p>Members split into three equal-sized groups by baseline chronic-risk score.</p>
+      </div>
+      <button class="btn-view" data-target="t-tiers">View data</button>
+    </div>
+    <div class="chart-h"><canvas id="chart-tiers"></canvas></div>
+    <div class="datatable-wrap" id="t-tiers">
+      <div class="table-scroll"><table class="dt">
+        <thead><tr><th>Risk tier</th><th class="num">Members</th><th class="num">% of members</th><th class="num">% of total cost</th><th class="num">Avg. cost / member-month</th></tr></thead>
+        <tbody id="tbody-tiers"></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- PANEL 2: diagnosis -->
+  <div class="panel">
+    <div class="panel-head">
+      <div>
+        <h3>Cost by diagnosis category</h3>
+        <p>Average monthly cost and ER use is fairly flat across conditions — risk score separates members far more than diagnosis does.</p>
+      </div>
+      <button class="btn-view" data-target="t-dx">View data</button>
+    </div>
+    <div class="chart-h"><canvas id="chart-dx"></canvas></div>
+    <div class="datatable-wrap" id="t-dx">
+      <div class="table-scroll"><table class="dt">
+        <thead><tr><th>Diagnosis</th><th class="num">Members</th><th class="num">Avg. cost / member-month</th></tr></thead>
+        <tbody id="tbody-dx"></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- PANEL 3: cost drivers -->
+  <div class="panel">
+    <div class="panel-head">
+      <div>
+        <h3>Cost driver regression</h3>
+        <p>Each member's average monthly cost, regressed on age, risk score, and diagnosis (R² = <span id="r2"></span>).</p>
+      </div>
+      <button class="btn-view" data-target="t-drivers">View data</button>
+    </div>
+    <div class="chart-h wide"><canvas id="chart-drivers"></canvas></div>
+    <div class="datatable-wrap" id="t-drivers">
+      <div class="table-scroll"><table class="dt">
+        <thead><tr><th>Factor</th><th class="num">$ / member-month</th><th class="num">p-value</th><th>Significant</th></tr></thead>
+        <tbody id="tbody-drivers"></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- PANEL 4: risk model -->
+  <div class="panel">
+    <div class="panel-head">
+      <div>
+        <h3>Risk-stratification model</h3>
+        <p>Predicts top-quintile future cost using only pre-program claims history, on members the model never trained on.</p>
+      </div>
+      <button class="btn-view" data-target="t-model">View data</button>
+    </div>
+    <div class="two-col">
+      <div class="chart-h"><canvas id="chart-roc"></canvas></div>
+      <div class="chart-h"><canvas id="chart-importance"></canvas></div>
+    </div>
+    <div class="datatable-wrap" id="t-model">
+      <div class="table-scroll"><table class="dt">
+        <thead><tr><th>Feature</th><th class="num">Importance</th></tr></thead>
+        <tbody id="tbody-model"></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- PANEL 5: program evaluation -->
+  <div class="panel">
+    <div class="panel-head">
+      <div>
+        <h3>Program impact (difference-in-differences)</h3>
+        <p>Treated vs. control ER utilization, before and after launch (dashed line). Trends run parallel beforehand, which is what makes the comparison valid.</p>
+      </div>
+      <button class="btn-view" data-target="t-did">View data</button>
+    </div>
+    <div class="stat-chips">
+      <span class="chip"><span class="k">Cost effect</span><span id="chip-cost"></span></span>
+      <span class="chip"><span class="k">ER effect</span><span id="chip-er"></span></span>
+      <span class="chip blue"><span class="k">Significance</span>p &lt; 0.001 (both)</span>
+    </div>
+    <div class="chart-h wide"><canvas id="chart-trend"></canvas></div>
+    <div class="datatable-wrap" id="t-did">
+      <div class="table-scroll"><table class="dt">
+        <thead><tr><th class="num">Month</th><th class="num">Control ER / member-month</th><th class="num">Treated ER / member-month</th></tr></thead>
+        <tbody id="tbody-did"></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- PANEL 6: raw data explorer -->
+  <div class="panel">
+    <div class="panel-head">
+      <div>
+        <h3>Explore the underlying claims data</h3>
+        <p>A sample of the actual member-month records every chart above is computed from.</p>
+      </div>
+    </div>
+    <div class="explorer-controls">
+      <input type="text" id="filter-text" placeholder="Filter by member ID or diagnosis…">
+      <select id="filter-group">
+        <option value="">All groups</option>
+        <option value="Treated">Treated</option>
+        <option value="Control">Control</option>
+      </select>
+      <select id="filter-period">
+        <option value="">All periods</option>
+        <option value="Pre-launch">Pre-launch</option>
+        <option value="Post-launch">Post-launch</option>
+      </select>
+    </div>
+    <div class="table-scroll" style="max-height:360px;">
+      <table class="dt" id="raw-table">
+        <thead><tr>
+          <th class="sortable num" data-k="member_id">Member ID <span class="arrow">↕</span></th>
+          <th class="sortable num" data-k="month">Month <span class="arrow">↕</span></th>
+          <th class="sortable" data-k="group">Group <span class="arrow">↕</span></th>
+          <th class="sortable" data-k="period">Period <span class="arrow">↕</span></th>
+          <th class="sortable num" data-k="age">Age <span class="arrow">↕</span></th>
+          <th class="sortable" data-k="dx_category">Diagnosis <span class="arrow">↕</span></th>
+          <th class="sortable num" data-k="risk_score">Risk score <span class="arrow">↕</span></th>
+          <th class="sortable num" data-k="er_visits">ER visits <span class="arrow">↕</span></th>
+          <th class="sortable num" data-k="allowed_cost">Allowed cost <span class="arrow">↕</span></th>
+        </tr></thead>
+        <tbody id="raw-body"></tbody>
+      </table>
+    </div>
+    <p class="caption" id="raw-count"></p>
+  </div>
+
+  <footer>
+    <p>Stack: Python (pandas, numpy, statsmodels, scikit-learn) · SQLite for claims aggregation ·
+    Difference-in-differences with member-clustered standard errors · Gradient-boosted classifier,
+    held-out test split.</p>
+    <p><a href="https://github.com/Meghana-l/healthcare-claims-analytics-dashboard" target="_blank" rel="noopener">github.com/Meghana-l/healthcare-claims-analytics-dashboard</a></p>
+    <span class="disclosure">All member, diagnosis, and claims figures on this page are synthetically generated for methodology demonstration — no real patient or member data is used anywhere in this project.</span>
+  </footer>
+
+</main>
+
+<script>
+const DATA = {"headline": {"n_members": 1500, "n_member_months": 27000, "high_tier_member_share_pct": 33.3, "high_tier_cost_share_pct": 49.5, "did_cost_pct": -10.6, "did_er_pct": -23.2, "risk_auc": 0.958}, "module_a_population": {"risk_tiers": [{"risk_tier": "Low", "n_members": 500, "avg_monthly_cost": 488.58870666666667, "total_cost_share_pct": 20.2, "n_members_share_pct": 33.3}, {"risk_tier": "Medium", "n_members": 500, "avg_monthly_cost": 732.3441, "total_cost_share_pct": 30.3, "n_members_share_pct": 33.3}, {"risk_tier": "High", "n_members": 500, "avg_monthly_cost": 1197.2680022222223, "total_cost_share_pct": 49.5, "n_members_share_pct": 33.3}], "diagnosis_cost": [{"dx_category": "CHF", "n_members": 227, "avg_monthly_cost": 844.703695545766}, {"dx_category": "Hypertension", "n_members": 406, "avg_monthly_cost": 811.7551204159824}, {"dx_category": "Diabetes", "n_members": 382, "avg_monthly_cost": 801.4443455497382}, {"dx_category": "Behavioral Health", "n_members": 246, "avg_monthly_cost": 797.9444941282745}, {"dx_category": "COPD", "n_members": 239, "avg_monthly_cost": 775.4560715946071}]}, "module_b_cost_drivers": {"r_squared": 0.922, "drivers": [{"factor": "Chronic risk score (per 1-pt)", "dollars_per_member_month": 192.28, "pvalue": 0.0}, {"factor": "Diagnosis: CHF", "dollars_per_member_month": 15.51, "pvalue": 0.108}, {"factor": "Diagnosis: Hypertension", "dollars_per_member_month": 7.19, "pvalue": 0.3956}, {"factor": "Diagnosis: COPD", "dollars_per_member_month": 6.15, "pvalue": 0.5182}, {"factor": "Diagnosis: Diabetes", "dollars_per_member_month": 4.32, "pvalue": 0.6137}, {"factor": "Age (per year)", "dollars_per_member_month": 2.08, "pvalue": 0.0}]}, "module_c_risk_model": {"auc": 0.958, "feature_importance": {"age": 0.021, "risk_score": 0.886, "pre_avg_cost": 0.052, "pre_avg_er": 0.006, "treated": 0.035}, "roc_fpr": [0.0, 0.003, 0.003, 0.003, 0.003, 0.007, 0.007, 0.01, 0.01, 0.01, 0.01, 0.013, 0.013, 0.017, 0.017, 0.02, 0.02, 0.023, 0.023, 0.027, 0.027, 0.03, 0.03, 0.033, 0.033, 0.043, 0.043, 0.047, 0.047, 0.083, 0.083, 0.09, 0.09, 0.1, 0.1, 0.107, 0.107, 0.163, 0.163, 0.197, 0.2, 0.207, 0.217, 0.22, 0.227, 0.237, 0.25, 0.26, 0.283, 0.287, 0.293, 0.3, 0.307, 0.31, 0.317, 0.32, 0.353, 0.37, 0.433, 0.547, 0.57, 0.617, 0.653, 0.673, 0.68, 0.687, 0.703, 0.71, 0.72, 0.727, 0.73, 0.9, 0.907, 0.94, 0.967, 0.99, 1.0], "roc_tpr": [0.0, 0.0, 0.187, 0.24, 0.453, 0.453, 0.48, 0.48, 0.533, 0.56, 0.6, 0.6, 0.613, 0.613, 0.667, 0.667, 0.68, 0.68, 0.707, 0.707, 0.747, 0.747, 0.76, 0.76, 0.787, 0.787, 0.84, 0.84, 0.867, 0.867, 0.893, 0.893, 0.92, 0.92, 0.933, 0.933, 0.947, 0.947, 0.96, 0.96, 0.973, 0.973, 0.973, 0.973, 0.973, 0.973, 0.973, 0.973, 0.973, 0.973, 0.973, 0.973, 0.973, 0.973, 0.973, 0.973, 0.973, 0.973, 0.973, 0.973, 0.973, 0.973, 0.973, 0.973, 0.973, 0.973, 0.973, 0.973, 0.987, 0.987, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]}, "module_d_program_evaluation": {"did_cost_dollars": -93.54, "did_cost_pct": -10.6, "did_cost_pvalue": 0.0, "did_er_pct": -23.2, "did_er_pvalue": 0.0, "trend_months": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17], "trend_control": [0.241, 0.266, 0.241, 0.251, 0.309, 0.301, 0.243, 0.299, 0.227, 0.242, 0.23, 0.314, 0.266, 0.287, 0.298, 0.307, 0.311, 0.318], "trend_treated": [0.237, 0.251, 0.277, 0.263, 0.281, 0.27, 0.21, 0.294, 0.32, 0.189, 0.214, 0.229, 0.213, 0.227, 0.225, 0.206, 0.266, 0.23], "launch_month": 9}, "raw_sample": [{"member_id": 26, "month": 0, "group": "Control", "period": "Pre-launch", "age": 67, "dx_category": "Behavioral Health", "risk_score": 0.851, "er_visits": 0, "allowed_cost": 570.73}, {"member_id": 26, "month": 1, "group": "Control", "period": "Pre-launch", "age": 67, "dx_category": "Behavioral Health", "risk_score": 0.851, "er_visits": 0, "allowed_cost": 288.87}, {"member_id": 26, "month": 2, "group": "Control", "period": "Pre-launch", "age": 67, "dx_category": "Behavioral Health", "risk_score": 0.851, "er_visits": 0, "allowed_cost": 482.14}, {"member_id": 26, "month": 3, "group": "Control", "period": "Pre-launch", "age": 67, "dx_category": "Behavioral Health", "risk_score": 0.851, "er_visits": 0, "allowed_cost": 348.29}, {"member_id": 26, "month": 4, "group": "Control", "period": "Pre-launch", "age": 67, "dx_category": "Behavioral Health", "risk_score": 0.851, "er_visits": 0, "allowed_cost": 380.2}, {"member_id": 26, "month": 5, "group": "Control", "period": "Pre-launch", "age": 67, "dx_category": "Behavioral Health", "risk_score": 0.851, "er_visits": 1, "allowed_cost": 675.09}, {"member_id": 26, "month": 6, "group": "Control", "period": "Pre-launch", "age": 67, "dx_category": "Behavioral Health", "risk_score": 0.851, "er_visits": 0, "allowed_cost": 374.84}, {"member_id": 26, "month": 7, "group": "Control", "period": "Pre-launch", "age": 67, "dx_category": "Behavioral Health", "risk_score": 0.851, "er_visits": 0, "allowed_cost": 874.79}, {"member_id": 26, "month": 8, "group": "Control", "period": "Pre-launch", "age": 67, "dx_category": "Behavioral Health", "risk_score": 0.851, "er_visits": 0, "allowed_cost": 722.46}, {"member_id": 26, "month": 9, "group": "Control", "period": "Post-launch", "age": 67, "dx_category": "Behavioral Health", "risk_score": 0.851, "er_visits": 0, "allowed_cost": 401.29}, {"member_id": 26, "month": 10, "group": "Control", "period": "Post-launch", "age": 67, "dx_category": "Behavioral Health", "risk_score": 0.851, "er_visits": 0, "allowed_cost": 283.22}, {"member_id": 26, "month": 11, "group": "Control", "period": "Post-launch", "age": 67, "dx_category": "Behavioral Health", "risk_score": 0.851, "er_visits": 0, "allowed_cost": 404.93}, {"member_id": 26, "month": 12, "group": "Control", "period": "Post-launch", "age": 67, "dx_category": "Behavioral Health", "risk_score": 0.851, "er_visits": 0, "allowed_cost": 385.92}, {"member_id": 26, "month": 13, "group": "Control", "period": "Post-launch", "age": 67, "dx_category": "Behavioral Health", "risk_score": 0.851, "er_visits": 0, "allowed_cost": 626.27}, {"member_id": 26, "month": 14, "group": "Control", "period": "Post-launch", "age": 67, "dx_category": "Behavioral Health", "risk_score": 0.851, "er_visits": 0, "allowed_cost": 185.06}, {"member_id": 26, "month": 15, "group": "Control", "period": "Post-launch", "age": 67, "dx_category": "Behavioral Health", "risk_score": 0.851, "er_visits": 0, "allowed_cost": 251.55}, {"member_id": 26, "month": 16, "group": "Control", "period": "Post-launch", "age": 67, "dx_category": "Behavioral Health", "risk_score": 0.851, "er_visits": 0, "allowed_cost": 637.41}, {"member_id": 26, "month": 17, "group": "Control", "period": "Post-launch", "age": 67, "dx_category": "Behavioral Health", "risk_score": 0.851, "er_visits": 2, "allowed_cost": 456.67}, {"member_id": 33, "month": 0, "group": "Treated", "period": "Pre-launch", "age": 39, "dx_category": "COPD", "risk_score": 3.071, "er_visits": 1, "allowed_cost": 980.84}, {"member_id": 33, "month": 1, "group": "Treated", "period": "Pre-launch", "age": 39, "dx_category": "COPD", "risk_score": 3.071, "er_visits": 0, "allowed_cost": 700.36}, {"member_id": 33, "month": 2, "group": "Treated", "period": "Pre-launch", "age": 39, "dx_category": "COPD", "risk_score": 3.071, "er_visits": 0, "allowed_cost": 413.73}, {"member_id": 33, "month": 3, "group": "Treated", "period": "Pre-launch", "age": 39, "dx_category": "COPD", "risk_score": 3.071, "er_visits": 0, "allowed_cost": 828.62}, {"member_id": 33, "month": 4, "group": "Treated", "period": "Pre-launch", "age": 39, "dx_category": "COPD", "risk_score": 3.071, "er_visits": 0, "allowed_cost": 726.65}, {"member_id": 33, "month": 5, "group": "Treated", "period": "Pre-launch", "age": 39, "dx_category": "COPD", "risk_score": 3.071, "er_visits": 0, "allowed_cost": 809.75}, {"member_id": 33, "month": 6, "group": "Treated", "period": "Pre-launch", "age": 39, "dx_category": "COPD", "risk_score": 3.071, "er_visits": 0, "allowed_cost": 1062.87}, {"member_id": 33, "month": 7, "group": "Treated", "period": "Pre-launch", "age": 39, "dx_category": "COPD", "risk_score": 3.071, "er_visits": 1, "allowed_cost": 399.44}, {"member_id": 33, "month": 8, "group": "Treated", "period": "Pre-launch", "age": 39, "dx_category": "COPD", "risk_score": 3.071, "er_visits": 1, "allowed_cost": 1313.04}, {"member_id": 33, "month": 9, "group": "Treated", "period": "Post-launch", "age": 39, "dx_category": "COPD", "risk_score": 3.071, "er_visits": 0, "allowed_cost": 744.61}, {"member_id": 33, "month": 10, "group": "Treated", "period": "Post-launch", "age": 39, "dx_category": "COPD", "risk_score": 3.071, "er_visits": 0, "allowed_cost": 572.27}, {"member_id": 33, "month": 11, "group": "Treated", "period": "Post-launch", "age": 39, "dx_category": "COPD", "risk_score": 3.071, "er_visits": 0, "allowed_cost": 831.46}, {"member_id": 33, "month": 12, "group": "Treated", "period": "Post-launch", "age": 39, "dx_category": "COPD", "risk_score": 3.071, "er_visits": 0, "allowed_cost": 740.74}, {"member_id": 33, "month": 13, "group": "Treated", "period": "Post-launch", "age": 39, "dx_category": "COPD", "risk_score": 3.071, "er_visits": 1, "allowed_cost": 786.7}, {"member_id": 33, "month": 14, "group": "Treated", "period": "Post-launch", "age": 39, "dx_category": "COPD", "risk_score": 3.071, "er_visits": 1, "allowed_cost": 1054.36}, {"member_id": 33, "month": 15, "group": "Treated", "period": "Post-launch", "age": 39, "dx_category": "COPD", "risk_score": 3.071, "er_visits": 0, "allowed_cost": 525.33}, {"member_id": 33, "month": 16, "group": "Treated", "period": "Post-launch", "age": 39, "dx_category": "COPD", "risk_score": 3.071, "er_visits": 1, "allowed_cost": 593.71}, {"member_id": 33, "month": 17, "group": "Treated", "period": "Post-launch", "age": 39, "dx_category": "COPD", "risk_score": 3.071, "er_visits": 0, "allowed_cost": 897.49}, {"member_id": 87, "month": 0, "group": "Control", "period": "Pre-launch", "age": 39, "dx_category": "Hypertension", "risk_score": 3.128, "er_visits": 0, "allowed_cost": 1573.52}, {"member_id": 87, "month": 1, "group": "Control", "period": "Pre-launch", "age": 39, "dx_category": "Hypertension", "risk_score": 3.128, "er_visits": 0, "allowed_cost": 960.0}, {"member_id": 87, "month": 2, "group": "Control", "period": "Pre-launch", "age": 39, "dx_category": "Hypertension", "risk_score": 3.128, "er_visits": 0, "allowed_cost": 1136.54}, {"member_id": 87, "month": 3, "group": "Control", "period": "Pre-launch", "age": 39, "dx_category": "Hypertension", "risk_score": 3.128, "er_visits": 0, "allowed_cost": 1072.87}, {"member_id": 87, "month": 4, "group": "Control", "period": "Pre-launch", "age": 39, "dx_category": "Hypertension", "risk_score": 3.128, "er_visits": 0, "allowed_cost": 1163.04}, {"member_id": 87, "month": 5, "group": "Control", "period": "Pre-launch", "age": 39, "dx_category": "Hypertension", "risk_score": 3.128, "er_visits": 0, "allowed_cost": 947.58}, {"member_id": 87, "month": 6, "group": "Control", "period": "Pre-launch", "age": 39, "dx_category": "Hypertension", "risk_score": 3.128, "er_visits": 1, "allowed_cost": 594.94}, {"member_id": 87, "month": 7, "group": "Control", "period": "Pre-launch", "age": 39, "dx_category": "Hypertension", "risk_score": 3.128, "er_visits": 0, "allowed_cost": 862.19}, {"member_id": 87, "month": 8, "group": "Control", "period": "Pre-launch", "age": 39, "dx_category": "Hypertension", "risk_score": 3.128, "er_visits": 0, "allowed_cost": 1143.65}, {"member_id": 87, "month": 9, "group": "Control", "period": "Post-launch", "age": 39, "dx_category": "Hypertension", "risk_score": 3.128, "er_visits": 0, "allowed_cost": 739.54}, {"member_id": 87, "month": 10, "group": "Control", "period": "Post-launch", "age": 39, "dx_category": "Hypertension", "risk_score": 3.128, "er_visits": 0, "allowed_cost": 754.16}, {"member_id": 87, "month": 11, "group": "Control", "period": "Post-launch", "age": 39, "dx_category": "Hypertension", "risk_score": 3.128, "er_visits": 0, "allowed_cost": 923.95}, {"member_id": 87, "month": 12, "group": "Control", "period": "Post-launch", "age": 39, "dx_category": "Hypertension", "risk_score": 3.128, "er_visits": 0, "allowed_cost": 897.95}, {"member_id": 87, "month": 13, "group": "Control", "period": "Post-launch", "age": 39, "dx_category": "Hypertension", "risk_score": 3.128, "er_visits": 0, "allowed_cost": 782.67}, {"member_id": 87, "month": 14, "group": "Control", "period": "Post-launch", "age": 39, "dx_category": "Hypertension", "risk_score": 3.128, "er_visits": 1, "allowed_cost": 246.61}, {"member_id": 87, "month": 15, "group": "Control", "period": "Post-launch", "age": 39, "dx_category": "Hypertension", "risk_score": 3.128, "er_visits": 0, "allowed_cost": 789.3}, {"member_id": 87, "month": 16, "group": "Control", "period": "Post-launch", "age": 39, "dx_category": "Hypertension", "risk_score": 3.128, "er_visits": 0, "allowed_cost": 467.66}, {"member_id": 87, "month": 17, "group": "Control", "period": "Post-launch", "age": 39, "dx_category": "Hypertension", "risk_score": 3.128, "er_visits": 0, "allowed_cost": 926.27}, {"member_id": 106, "month": 0, "group": "Treated", "period": "Pre-launch", "age": 74, "dx_category": "COPD", "risk_score": 4.614, "er_visits": 2, "allowed_cost": 1188.15}, {"member_id": 106, "month": 1, "group": "Treated", "period": "Pre-launch", "age": 74, "dx_category": "COPD", "risk_score": 4.614, "er_visits": 1, "allowed_cost": 1017.16}, {"member_id": 106, "month": 2, "group": "Treated", "period": "Pre-launch", "age": 74, "dx_category": "COPD", "risk_score": 4.614, "er_visits": 0, "allowed_cost": 1903.67}, {"member_id": 106, "month": 3, "group": "Treated", "period": "Pre-launch", "age": 74, "dx_category": "COPD", "risk_score": 4.614, "er_visits": 2, "allowed_cost": 1140.38}, {"member_id": 106, "month": 4, "group": "Treated", "period": "Pre-launch", "age": 74, "dx_category": "COPD", "risk_score": 4.614, "er_visits": 0, "allowed_cost": 830.55}, {"member_id": 106, "month": 5, "group": "Treated", "period": "Pre-launch", "age": 74, "dx_category": "COPD", "risk_score": 4.614, "er_visits": 1, "allowed_cost": 1333.49}, {"member_id": 106, "month": 6, "group": "Treated", "period": "Pre-launch", "age": 74, "dx_category": "COPD", "risk_score": 4.614, "er_visits": 0, "allowed_cost": 804.16}, {"member_id": 106, "month": 7, "group": "Treated", "period": "Pre-launch", "age": 74, "dx_category": "COPD", "risk_score": 4.614, "er_visits": 1, "allowed_cost": 1387.49}, {"member_id": 106, "month": 8, "group": "Treated", "period": "Pre-launch", "age": 74, "dx_category": "COPD", "risk_score": 4.614, "er_visits": 1, "allowed_cost": 1323.42}, {"member_id": 106, "month": 9, "group": "Treated", "period": "Post-launch", "age": 74, "dx_category": "COPD", "risk_score": 4.614, "er_visits": 0, "allowed_cost": 1428.7}, {"member_id": 106, "month": 10, "group": "Treated", "period": "Post-launch", "age": 74, "dx_category": "COPD", "risk_score": 4.614, "er_visits": 0, "allowed_cost": 558.24}, {"member_id": 106, "month": 11, "group": "Treated", "period": "Post-launch", "age": 74, "dx_category": "COPD", "risk_score": 4.614, "er_visits": 0, "allowed_cost": 449.63}, {"member_id": 106, "month": 12, "group": "Treated", "period": "Post-launch", "age": 74, "dx_category": "COPD", "risk_score": 4.614, "er_visits": 0, "allowed_cost": 959.73}, {"member_id": 106, "month": 13, "group": "Treated", "period": "Post-launch", "age": 74, "dx_category": "COPD", "risk_score": 4.614, "er_visits": 0, "allowed_cost": 1995.91}, {"member_id": 106, "month": 14, "group": "Treated", "period": "Post-launch", "age": 74, "dx_category": "COPD", "risk_score": 4.614, "er_visits": 1, "allowed_cost": 1091.75}, {"member_id": 106, "month": 15, "group": "Treated", "period": "Post-launch", "age": 74, "dx_category": "COPD", "risk_score": 4.614, "er_visits": 0, "allowed_cost": 605.34}, {"member_id": 106, "month": 16, "group": "Treated", "period": "Post-launch", "age": 74, "dx_category": "COPD", "risk_score": 4.614, "er_visits": 0, "allowed_cost": 1227.13}, {"member_id": 106, "month": 17, "group": "Treated", "period": "Post-launch", "age": 74, "dx_category": "COPD", "risk_score": 4.614, "er_visits": 0, "allowed_cost": 392.74}, {"member_id": 110, "month": 0, "group": "Control", "period": "Pre-launch", "age": 70, "dx_category": "COPD", "risk_score": 5.948, "er_visits": 1, "allowed_cost": 970.15}, {"member_id": 110, "month": 1, "group": "Control", "period": "Pre-launch", "age": 70, "dx_category": "COPD", "risk_score": 5.948, "er_visits": 1, "allowed_cost": 932.21}, {"member_id": 110, "month": 2, "group": "Control", "period": "Pre-launch", "age": 70, "dx_category": "COPD", "risk_score": 5.948, "er_visits": 1, "allowed_cost": 1589.92}, {"member_id": 110, "month": 3, "group": "Control", "period": "Pre-launch", "age": 70, "dx_category": "COPD", "risk_score": 5.948, "er_visits": 0, "allowed_cost": 1276.49}, {"member_id": 110, "month": 4, "group": "Control", "period": "Pre-launch", "age": 70, "dx_category": "COPD", "risk_score": 5.948, "er_visits": 0, "allowed_cost": 1601.38}, {"member_id": 110, "month": 5, "group": "Control", "period": "Pre-launch", "age": 70, "dx_category": "COPD", "risk_score": 5.948, "er_visits": 0, "allowed_cost": 2697.29}, {"member_id": 110, "month": 6, "group": "Control", "period": "Pre-launch", "age": 70, "dx_category": "COPD", "risk_score": 5.948, "er_visits": 0, "allowed_cost": 1651.15}, {"member_id": 110, "month": 7, "group": "Control", "period": "Pre-launch", "age": 70, "dx_category": "COPD", "risk_score": 5.948, "er_visits": 0, "allowed_cost": 1730.28}, {"member_id": 110, "month": 8, "group": "Control", "period": "Pre-launch", "age": 70, "dx_category": "COPD", "risk_score": 5.948, "er_visits": 0, "allowed_cost": 1279.09}, {"member_id": 110, "month": 9, "group": "Control", "period": "Post-launch", "age": 70, "dx_category": "COPD", "risk_score": 5.948, "er_visits": 1, "allowed_cost": 2275.2}, {"member_id": 110, "month": 10, "group": "Control", "period": "Post-launch", "age": 70, "dx_category": "COPD", "risk_score": 5.948, "er_visits": 0, "allowed_cost": 1139.87}, {"member_id": 110, "month": 11, "group": "Control", "period": "Post-launch", "age": 70, "dx_category": "COPD", "risk_score": 5.948, "er_visits": 1, "allowed_cost": 1321.74}, {"member_id": 110, "month": 12, "group": "Control", "period": "Post-launch", "age": 70, "dx_category": "COPD", "risk_score": 5.948, "er_visits": 0, "allowed_cost": 1522.02}, {"member_id": 110, "month": 13, "group": "Control", "period": "Post-launch", "age": 70, "dx_category": "COPD", "risk_score": 5.948, "er_visits": 0, "allowed_cost": 1274.73}, {"member_id": 110, "month": 14, "group": "Control", "period": "Post-launch", "age": 70, "dx_category": "COPD", "risk_score": 5.948, "er_visits": 0, "allowed_cost": 1709.11}, {"member_id": 110, "month": 15, "group": "Control", "period": "Post-launch", "age": 70, "dx_category": "COPD", "risk_score": 5.948, "er_visits": 0, "allowed_cost": 2628.68}, {"member_id": 110, "month": 16, "group": "Control", "period": "Post-launch", "age": 70, "dx_category": "COPD", "risk_score": 5.948, "er_visits": 1, "allowed_cost": 1529.09}, {"member_id": 110, "month": 17, "group": "Control", "period": "Post-launch", "age": 70, "dx_category": "COPD", "risk_score": 5.948, "er_visits": 0, "allowed_cost": 1637.15}, {"member_id": 154, "month": 0, "group": "Control", "period": "Pre-launch", "age": 49, "dx_category": "COPD", "risk_score": 1.306, "er_visits": 0, "allowed_cost": 583.26}, {"member_id": 154, "month": 1, "group": "Control", "period": "Pre-launch", "age": 49, "dx_category": "COPD", "risk_score": 1.306, "er_visits": 0, "allowed_cost": 399.63}, {"member_id": 154, "month": 2, "group": "Control", "period": "Pre-launch", "age": 49, "dx_category": "COPD", "risk_score": 1.306, "er_visits": 1, "allowed_cost": 237.34}, {"member_id": 154, "month": 3, "group": "Control", "period": "Pre-launch", "age": 49, "dx_category": "COPD", "risk_score": 1.306, "er_visits": 0, "allowed_cost": 679.42}, {"member_id": 154, "month": 4, "group": "Control", "period": "Pre-launch", "age": 49, "dx_category": "COPD", "risk_score": 1.306, "er_visits": 0, "allowed_cost": 584.56}, {"member_id": 154, "month": 5, "group": "Control", "period": "Pre-launch", "age": 49, "dx_category": "COPD", "risk_score": 1.306, "er_visits": 0, "allowed_cost": 192.4}, {"member_id": 154, "month": 6, "group": "Control", "period": "Pre-launch", "age": 49, "dx_category": "COPD", "risk_score": 1.306, "er_visits": 0, "allowed_cost": 857.19}, {"member_id": 154, "month": 7, "group": "Control", "period": "Pre-launch", "age": 49, "dx_category": "COPD", "risk_score": 1.306, "er_visits": 1, "allowed_cost": 675.47}, {"member_id": 154, "month": 8, "group": "Control", "period": "Pre-launch", "age": 49, "dx_category": "COPD", "risk_score": 1.306, "er_visits": 0, "allowed_cost": 688.17}, {"member_id": 154, "month": 9, "group": "Control", "period": "Post-launch", "age": 49, "dx_category": "COPD", "risk_score": 1.306, "er_visits": 0, "allowed_cost": 548.85}, {"member_id": 154, "month": 10, "group": "Control", "period": "Post-launch", "age": 49, "dx_category": "COPD", "risk_score": 1.306, "er_visits": 0, "allowed_cost": 564.99}, {"member_id": 154, "month": 11, "group": "Control", "period": "Post-launch", "age": 49, "dx_category": "COPD", "risk_score": 1.306, "er_visits": 0, "allowed_cost": 524.94}, {"member_id": 154, "month": 12, "group": "Control", "period": "Post-launch", "age": 49, "dx_category": "COPD", "risk_score": 1.306, "er_visits": 1, "allowed_cost": 609.88}, {"member_id": 154, "month": 13, "group": "Control", "period": "Post-launch", "age": 49, "dx_category": "COPD", "risk_score": 1.306, "er_visits": 0, "allowed_cost": 781.23}, {"member_id": 154, "month": 14, "group": "Control", "period": "Post-launch", "age": 49, "dx_category": "COPD", "risk_score": 1.306, "er_visits": 0, "allowed_cost": 618.0}, {"member_id": 154, "month": 15, "group": "Control", "period": "Post-launch", "age": 49, "dx_category": "COPD", "risk_score": 1.306, "er_visits": 0, "allowed_cost": 657.8}, {"member_id": 154, "month": 16, "group": "Control", "period": "Post-launch", "age": 49, "dx_category": "COPD", "risk_score": 1.306, "er_visits": 1, "allowed_cost": 810.62}, {"member_id": 154, "month": 17, "group": "Control", "period": "Post-launch", "age": 49, "dx_category": "COPD", "risk_score": 1.306, "er_visits": 1, "allowed_cost": 685.08}, {"member_id": 204, "month": 0, "group": "Control", "period": "Pre-launch", "age": 69, "dx_category": "Diabetes", "risk_score": 0.613, "er_visits": 0, "allowed_cost": 695.68}, {"member_id": 204, "month": 1, "group": "Control", "period": "Pre-launch", "age": 69, "dx_category": "Diabetes", "risk_score": 0.613, "er_visits": 0, "allowed_cost": 533.46}, {"member_id": 204, "month": 2, "group": "Control", "period": "Pre-launch", "age": 69, "dx_category": "Diabetes", "risk_score": 0.613, "er_visits": 0, "allowed_cost": 563.61}, {"member_id": 204, "month": 3, "group": "Control", "period": "Pre-launch", "age": 69, "dx_category": "Diabetes", "risk_score": 0.613, "er_visits": 0, "allowed_cost": 289.15}, {"member_id": 204, "month": 4, "group": "Control", "period": "Pre-launch", "age": 69, "dx_category": "Diabetes", "risk_score": 0.613, "er_visits": 2, "allowed_cost": 369.83}, {"member_id": 204, "month": 5, "group": "Control", "period": "Pre-launch", "age": 69, "dx_category": "Diabetes", "risk_score": 0.613, "er_visits": 0, "allowed_cost": 302.87}, {"member_id": 204, "month": 6, "group": "Control", "period": "Pre-launch", "age": 69, "dx_category": "Diabetes", "risk_score": 0.613, "er_visits": 0, "allowed_cost": 393.81}, {"member_id": 204, "month": 7, "group": "Control", "period": "Pre-launch", "age": 69, "dx_category": "Diabetes", "risk_score": 0.613, "er_visits": 1, "allowed_cost": 589.77}, {"member_id": 204, "month": 8, "group": "Control", "period": "Pre-launch", "age": 69, "dx_category": "Diabetes", "risk_score": 0.613, "er_visits": 0, "allowed_cost": 165.43}, {"member_id": 204, "month": 9, "group": "Control", "period": "Post-launch", "age": 69, "dx_category": "Diabetes", "risk_score": 0.613, "er_visits": 0, "allowed_cost": 367.04}, {"member_id": 204, "month": 10, "group": "Control", "period": "Post-launch", "age": 69, "dx_category": "Diabetes", "risk_score": 0.613, "er_visits": 0, "allowed_cost": 316.3}, {"member_id": 204, "month": 11, "group": "Control", "period": "Post-launch", "age": 69, "dx_category": "Diabetes", "risk_score": 0.613, "er_visits": 1, "allowed_cost": 496.55}, {"member_id": 204, "month": 12, "group": "Control", "period": "Post-launch", "age": 69, "dx_category": "Diabetes", "risk_score": 0.613, "er_visits": 0, "allowed_cost": 440.7}, {"member_id": 204, "month": 13, "group": "Control", "period": "Post-launch", "age": 69, "dx_category": "Diabetes", "risk_score": 0.613, "er_visits": 0, "allowed_cost": 729.39}, {"member_id": 204, "month": 14, "group": "Control", "period": "Post-launch", "age": 69, "dx_category": "Diabetes", "risk_score": 0.613, "er_visits": 0, "allowed_cost": 309.0}, {"member_id": 204, "month": 15, "group": "Control", "period": "Post-launch", "age": 69, "dx_category": "Diabetes", "risk_score": 0.613, "er_visits": 0, "allowed_cost": 495.16}, {"member_id": 204, "month": 16, "group": "Control", "period": "Post-launch", "age": 69, "dx_category": "Diabetes", "risk_score": 0.613, "er_visits": 0, "allowed_cost": 296.67}, {"member_id": 204, "month": 17, "group": "Control", "period": "Post-launch", "age": 69, "dx_category": "Diabetes", "risk_score": 0.613, "er_visits": 0, "allowed_cost": 485.02}, {"member_id": 233, "month": 0, "group": "Control", "period": "Pre-launch", "age": 35, "dx_category": "Hypertension", "risk_score": 1.742, "er_visits": 0, "allowed_cost": 635.83}, {"member_id": 233, "month": 1, "group": "Control", "period": "Pre-launch", "age": 35, "dx_category": "Hypertension", "risk_score": 1.742, "er_visits": 0, "allowed_cost": 567.32}, {"member_id": 233, "month": 2, "group": "Control", "period": "Pre-launch", "age": 35, "dx_category": "Hypertension", "risk_score": 1.742, "er_visits": 0, "allowed_cost": 578.78}, {"member_id": 233, "month": 3, "group": "Control", "period": "Pre-launch", "age": 35, "dx_category": "Hypertension", "risk_score": 1.742, "er_visits": 0, "allowed_cost": 761.06}, {"member_id": 233, "month": 4, "group": "Control", "period": "Pre-launch", "age": 35, "dx_category": "Hypertension", "risk_score": 1.742, "er_visits": 1, "allowed_cost": 247.68}, {"member_id": 233, "month": 5, "group": "Control", "period": "Pre-launch", "age": 35, "dx_category": "Hypertension", "risk_score": 1.742, "er_visits": 0, "allowed_cost": 458.48}, {"member_id": 233, "month": 6, "group": "Control", "period": "Pre-launch", "age": 35, "dx_category": "Hypertension", "risk_score": 1.742, "er_visits": 0, "allowed_cost": 594.61}, {"member_id": 233, "month": 7, "group": "Control", "period": "Pre-launch", "age": 35, "dx_category": "Hypertension", "risk_score": 1.742, "er_visits": 0, "allowed_cost": 521.49}, {"member_id": 233, "month": 8, "group": "Control", "period": "Pre-launch", "age": 35, "dx_category": "Hypertension", "risk_score": 1.742, "er_visits": 0, "allowed_cost": 787.21}, {"member_id": 233, "month": 9, "group": "Control", "period": "Post-launch", "age": 35, "dx_category": "Hypertension", "risk_score": 1.742, "er_visits": 0, "allowed_cost": 556.93}, {"member_id": 233, "month": 10, "group": "Control", "period": "Post-launch", "age": 35, "dx_category": "Hypertension", "risk_score": 1.742, "er_visits": 0, "allowed_cost": 970.12}, {"member_id": 233, "month": 11, "group": "Control", "period": "Post-launch", "age": 35, "dx_category": "Hypertension", "risk_score": 1.742, "er_visits": 0, "allowed_cost": 572.53}, {"member_id": 233, "month": 12, "group": "Control", "period": "Post-launch", "age": 35, "dx_category": "Hypertension", "risk_score": 1.742, "er_visits": 0, "allowed_cost": 173.15}, {"member_id": 233, "month": 13, "group": "Control", "period": "Post-launch", "age": 35, "dx_category": "Hypertension", "risk_score": 1.742, "er_visits": 0, "allowed_cost": 553.23}, {"member_id": 233, "month": 14, "group": "Control", "period": "Post-launch", "age": 35, "dx_category": "Hypertension", "risk_score": 1.742, "er_visits": 0, "allowed_cost": 282.53}, {"member_id": 233, "month": 15, "group": "Control", "period": "Post-launch", "age": 35, "dx_category": "Hypertension", "risk_score": 1.742, "er_visits": 1, "allowed_cost": 679.99}, {"member_id": 233, "month": 16, "group": "Control", "period": "Post-launch", "age": 35, "dx_category": "Hypertension", "risk_score": 1.742, "er_visits": 0, "allowed_cost": 671.98}, {"member_id": 233, "month": 17, "group": "Control", "period": "Post-launch", "age": 35, "dx_category": "Hypertension", "risk_score": 1.742, "er_visits": 1, "allowed_cost": 762.06}, {"member_id": 270, "month": 0, "group": "Control", "period": "Pre-launch", "age": 64, "dx_category": "COPD", "risk_score": 3.445, "er_visits": 0, "allowed_cost": 815.18}, {"member_id": 270, "month": 1, "group": "Control", "period": "Pre-launch", "age": 64, "dx_category": "COPD", "risk_score": 3.445, "er_visits": 0, "allowed_cost": 877.79}, {"member_id": 270, "month": 2, "group": "Control", "period": "Pre-launch", "age": 64, "dx_category": "COPD", "risk_score": 3.445, "er_visits": 0, "allowed_cost": 930.4}, {"member_id": 270, "month": 3, "group": "Control", "period": "Pre-launch", "age": 64, "dx_category": "COPD", "risk_score": 3.445, "er_visits": 0, "allowed_cost": 1763.42}, {"member_id": 270, "month": 4, "group": "Control", "period": "Pre-launch", "age": 64, "dx_category": "COPD", "risk_score": 3.445, "er_visits": 0, "allowed_cost": 1519.34}, {"member_id": 270, "month": 5, "group": "Control", "period": "Pre-launch", "age": 64, "dx_category": "COPD", "risk_score": 3.445, "er_visits": 0, "allowed_cost": 1146.51}, {"member_id": 270, "month": 6, "group": "Control", "period": "Pre-launch", "age": 64, "dx_category": "COPD", "risk_score": 3.445, "er_visits": 0, "allowed_cost": 994.54}, {"member_id": 270, "month": 7, "group": "Control", "period": "Pre-launch", "age": 64, "dx_category": "COPD", "risk_score": 3.445, "er_visits": 1, "allowed_cost": 623.65}, {"member_id": 270, "month": 8, "group": "Control", "period": "Pre-launch", "age": 64, "dx_category": "COPD", "risk_score": 3.445, "er_visits": 0, "allowed_cost": 1347.99}, {"member_id": 270, "month": 9, "group": "Control", "period": "Post-launch", "age": 64, "dx_category": "COPD", "risk_score": 3.445, "er_visits": 0, "allowed_cost": 876.37}, {"member_id": 270, "month": 10, "group": "Control", "period": "Post-launch", "age": 64, "dx_category": "COPD", "risk_score": 3.445, "er_visits": 1, "allowed_cost": 1648.49}, {"member_id": 270, "month": 11, "group": "Control", "period": "Post-launch", "age": 64, "dx_category": "COPD", "risk_score": 3.445, "er_visits": 0, "allowed_cost": 1193.35}, {"member_id": 270, "month": 12, "group": "Control", "period": "Post-launch", "age": 64, "dx_category": "COPD", "risk_score": 3.445, "er_visits": 0, "allowed_cost": 856.36}, {"member_id": 270, "month": 13, "group": "Control", "period": "Post-launch", "age": 64, "dx_category": "COPD", "risk_score": 3.445, "er_visits": 0, "allowed_cost": 1009.88}, {"member_id": 270, "month": 14, "group": "Control", "period": "Post-launch", "age": 64, "dx_category": "COPD", "risk_score": 3.445, "er_visits": 1, "allowed_cost": 1186.8}, {"member_id": 270, "month": 15, "group": "Control", "period": "Post-launch", "age": 64, "dx_category": "COPD", "risk_score": 3.445, "er_visits": 0, "allowed_cost": 748.71}, {"member_id": 270, "month": 16, "group": "Control", "period": "Post-launch", "age": 64, "dx_category": "COPD", "risk_score": 3.445, "er_visits": 0, "allowed_cost": 1060.6}, {"member_id": 270, "month": 17, "group": "Control", "period": "Post-launch", "age": 64, "dx_category": "COPD", "risk_score": 3.445, "er_visits": 3, "allowed_cost": 1537.3}, {"member_id": 319, "month": 0, "group": "Treated", "period": "Pre-launch", "age": 81, "dx_category": "Diabetes", "risk_score": 2.296, "er_visits": 2, "allowed_cost": 838.26}, {"member_id": 319, "month": 1, "group": "Treated", "period": "Pre-launch", "age": 81, "dx_category": "Diabetes", "risk_score": 2.296, "er_visits": 0, "allowed_cost": 747.86}, {"member_id": 319, "month": 2, "group": "Treated", "period": "Pre-launch", "age": 81, "dx_category": "Diabetes", "risk_score": 2.296, "er_visits": 0, "allowed_cost": 431.28}, {"member_id": 319, "month": 3, "group": "Treated", "period": "Pre-launch", "age": 81, "dx_category": "Diabetes", "risk_score": 2.296, "er_visits": 1, "allowed_cost": 841.91}, {"member_id": 319, "month": 4, "group": "Treated", "period": "Pre-launch", "age": 81, "dx_category": "Diabetes", "risk_score": 2.296, "er_visits": 0, "allowed_cost": 606.0}, {"member_id": 319, "month": 5, "group": "Treated", "period": "Pre-launch", "age": 81, "dx_category": "Diabetes", "risk_score": 2.296, "er_visits": 0, "allowed_cost": 503.06}, {"member_id": 319, "month": 6, "group": "Treated", "period": "Pre-launch", "age": 81, "dx_category": "Diabetes", "risk_score": 2.296, "er_visits": 0, "allowed_cost": 1019.23}, {"member_id": 319, "month": 7, "group": "Treated", "period": "Pre-launch", "age": 81, "dx_category": "Diabetes", "risk_score": 2.296, "er_visits": 0, "allowed_cost": 583.03}, {"member_id": 319, "month": 8, "group": "Treated", "period": "Pre-launch", "age": 81, "dx_category": "Diabetes", "risk_score": 2.296, "er_visits": 0, "allowed_cost": 593.31}, {"member_id": 319, "month": 9, "group": "Treated", "period": "Post-launch", "age": 81, "dx_category": "Diabetes", "risk_score": 2.296, "er_visits": 0, "allowed_cost": 778.17}, {"member_id": 319, "month": 10, "group": "Treated", "period": "Post-launch", "age": 81, "dx_category": "Diabetes", "risk_score": 2.296, "er_visits": 0, "allowed_cost": 830.77}, {"member_id": 319, "month": 11, "group": "Treated", "period": "Post-launch", "age": 81, "dx_category": "Diabetes", "risk_score": 2.296, "er_visits": 0, "allowed_cost": 469.68}, {"member_id": 319, "month": 12, "group": "Treated", "period": "Post-launch", "age": 81, "dx_category": "Diabetes", "risk_score": 2.296, "er_visits": 0, "allowed_cost": 908.09}, {"member_id": 319, "month": 13, "group": "Treated", "period": "Post-launch", "age": 81, "dx_category": "Diabetes", "risk_score": 2.296, "er_visits": 0, "allowed_cost": 574.64}, {"member_id": 319, "month": 14, "group": "Treated", "period": "Post-launch", "age": 81, "dx_category": "Diabetes", "risk_score": 2.296, "er_visits": 0, "allowed_cost": 417.62}, {"member_id": 319, "month": 15, "group": "Treated", "period": "Post-launch", "age": 81, "dx_category": "Diabetes", "risk_score": 2.296, "er_visits": 1, "allowed_cost": 436.29}, {"member_id": 319, "month": 16, "group": "Treated", "period": "Post-launch", "age": 81, "dx_category": "Diabetes", "risk_score": 2.296, "er_visits": 0, "allowed_cost": 849.57}, {"member_id": 319, "month": 17, "group": "Treated", "period": "Post-launch", "age": 81, "dx_category": "Diabetes", "risk_score": 2.296, "er_visits": 0, "allowed_cost": 685.39}, {"member_id": 356, "month": 0, "group": "Control", "period": "Pre-launch", "age": 84, "dx_category": "Hypertension", "risk_score": 0.164, "er_visits": 0, "allowed_cost": 385.83}, {"member_id": 356, "month": 1, "group": "Control", "period": "Pre-launch", "age": 84, "dx_category": "Hypertension", "risk_score": 0.164, "er_visits": 0, "allowed_cost": 377.17}, {"member_id": 356, "month": 2, "group": "Control", "period": "Pre-launch", "age": 84, "dx_category": "Hypertension", "risk_score": 0.164, "er_visits": 1, "allowed_cost": 397.34}, {"member_id": 356, "month": 3, "group": "Control", "period": "Pre-launch", "age": 84, "dx_category": "Hypertension", "risk_score": 0.164, "er_visits": 0, "allowed_cost": 286.46}, {"member_id": 356, "month": 4, "group": "Control", "period": "Pre-launch", "age": 84, "dx_category": "Hypertension", "risk_score": 0.164, "er_visits": 0, "allowed_cost": 418.48}, {"member_id": 356, "month": 5, "group": "Control", "period": "Pre-launch", "age": 84, "dx_category": "Hypertension", "risk_score": 0.164, "er_visits": 0, "allowed_cost": 494.19}, {"member_id": 356, "month": 6, "group": "Control", "period": "Pre-launch", "age": 84, "dx_category": "Hypertension", "risk_score": 0.164, "er_visits": 1, "allowed_cost": 607.77}, {"member_id": 356, "month": 7, "group": "Control", "period": "Pre-launch", "age": 84, "dx_category": "Hypertension", "risk_score": 0.164, "er_visits": 0, "allowed_cost": 139.04}, {"member_id": 356, "month": 8, "group": "Control", "period": "Pre-launch", "age": 84, "dx_category": "Hypertension", "risk_score": 0.164, "er_visits": 0, "allowed_cost": 317.9}, {"member_id": 356, "month": 9, "group": "Control", "period": "Post-launch", "age": 84, "dx_category": "Hypertension", "risk_score": 0.164, "er_visits": 0, "allowed_cost": 538.96}, {"member_id": 356, "month": 10, "group": "Control", "period": "Post-launch", "age": 84, "dx_category": "Hypertension", "risk_score": 0.164, "er_visits": 0, "allowed_cost": 231.61}, {"member_id": 356, "month": 11, "group": "Control", "period": "Post-launch", "age": 84, "dx_category": "Hypertension", "risk_score": 0.164, "er_visits": 1, "allowed_cost": 406.31}, {"member_id": 356, "month": 12, "group": "Control", "period": "Post-launch", "age": 84, "dx_category": "Hypertension", "risk_score": 0.164, "er_visits": 0, "allowed_cost": 462.85}, {"member_id": 356, "month": 13, "group": "Control", "period": "Post-launch", "age": 84, "dx_category": "Hypertension", "risk_score": 0.164, "er_visits": 0, "allowed_cost": 548.89}, {"member_id": 356, "month": 14, "group": "Control", "period": "Post-launch", "age": 84, "dx_category": "Hypertension", "risk_score": 0.164, "er_visits": 0, "allowed_cost": 633.78}, {"member_id": 356, "month": 15, "group": "Control", "period": "Post-launch", "age": 84, "dx_category": "Hypertension", "risk_score": 0.164, "er_visits": 0, "allowed_cost": 190.32}, {"member_id": 356, "month": 16, "group": "Control", "period": "Post-launch", "age": 84, "dx_category": "Hypertension", "risk_score": 0.164, "er_visits": 0, "allowed_cost": 399.19}, {"member_id": 356, "month": 17, "group": "Control", "period": "Post-launch", "age": 84, "dx_category": "Hypertension", "risk_score": 0.164, "er_visits": 0, "allowed_cost": 278.53}, {"member_id": 386, "month": 0, "group": "Treated", "period": "Pre-launch", "age": 41, "dx_category": "CHF", "risk_score": 2.373, "er_visits": 0, "allowed_cost": 762.08}, {"member_id": 386, "month": 1, "group": "Treated", "period": "Pre-launch", "age": 41, "dx_category": "CHF", "risk_score": 2.373, "er_visits": 0, "allowed_cost": 989.77}, {"member_id": 386, "month": 2, "group": "Treated", "period": "Pre-launch", "age": 41, "dx_category": "CHF", "risk_score": 2.373, "er_visits": 0, "allowed_cost": 257.19}, {"member_id": 386, "month": 3, "group": "Treated", "period": "Pre-launch", "age": 41, "dx_category": "CHF", "risk_score": 2.373, "er_visits": 0, "allowed_cost": 475.39}, {"member_id": 386, "month": 4, "group": "Treated", "period": "Pre-launch", "age": 41, "dx_category": "CHF", "risk_score": 2.373, "er_visits": 0, "allowed_cost": 563.13}, {"member_id": 386, "month": 5, "group": "Treated", "period": "Pre-launch", "age": 41, "dx_category": "CHF", "risk_score": 2.373, "er_visits": 0, "allowed_cost": 354.26}, {"member_id": 386, "month": 6, "group": "Treated", "period": "Pre-launch", "age": 41, "dx_category": "CHF", "risk_score": 2.373, "er_visits": 0, "allowed_cost": 896.46}, {"member_id": 386, "month": 7, "group": "Treated", "period": "Pre-launch", "age": 41, "dx_category": "CHF", "risk_score": 2.373, "er_visits": 1, "allowed_cost": 609.32}, {"member_id": 386, "month": 8, "group": "Treated", "period": "Pre-launch", "age": 41, "dx_category": "CHF", "risk_score": 2.373, "er_visits": 0, "allowed_cost": 609.01}, {"member_id": 386, "month": 9, "group": "Treated", "period": "Post-launch", "age": 41, "dx_category": "CHF", "risk_score": 2.373, "er_visits": 0, "allowed_cost": 555.73}, {"member_id": 386, "month": 10, "group": "Treated", "period": "Post-launch", "age": 41, "dx_category": "CHF", "risk_score": 2.373, "er_visits": 0, "allowed_cost": 757.82}, {"member_id": 386, "month": 11, "group": "Treated", "period": "Post-launch", "age": 41, "dx_category": "CHF", "risk_score": 2.373, "er_visits": 0, "allowed_cost": 553.67}, {"member_id": 386, "month": 12, "group": "Treated", "period": "Post-launch", "age": 41, "dx_category": "CHF", "risk_score": 2.373, "er_visits": 0, "allowed_cost": 487.8}, {"member_id": 386, "month": 13, "group": "Treated", "period": "Post-launch", "age": 41, "dx_category": "CHF", "risk_score": 2.373, "er_visits": 0, "allowed_cost": 1128.79}, {"member_id": 386, "month": 14, "group": "Treated", "period": "Post-launch", "age": 41, "dx_category": "CHF", "risk_score": 2.373, "er_visits": 0, "allowed_cost": 650.98}, {"member_id": 386, "month": 15, "group": "Treated", "period": "Post-launch", "age": 41, "dx_category": "CHF", "risk_score": 2.373, "er_visits": 0, "allowed_cost": 1119.69}, {"member_id": 386, "month": 16, "group": "Treated", "period": "Post-launch", "age": 41, "dx_category": "CHF", "risk_score": 2.373, "er_visits": 0, "allowed_cost": 1259.33}, {"member_id": 386, "month": 17, "group": "Treated", "period": "Post-launch", "age": 41, "dx_category": "CHF", "risk_score": 2.373, "er_visits": 0, "allowed_cost": 559.58}, {"member_id": 400, "month": 0, "group": "Treated", "period": "Pre-launch", "age": 50, "dx_category": "Behavioral Health", "risk_score": 3.538, "er_visits": 1, "allowed_cost": 738.29}, {"member_id": 400, "month": 1, "group": "Treated", "period": "Pre-launch", "age": 50, "dx_category": "Behavioral Health", "risk_score": 3.538, "er_visits": 0, "allowed_cost": 797.91}, {"member_id": 400, "month": 2, "group": "Treated", "period": "Pre-launch", "age": 50, "dx_category": "Behavioral Health", "risk_score": 3.538, "er_visits": 0, "allowed_cost": 1342.52}, {"member_id": 400, "month": 3, "group": "Treated", "period": "Pre-launch", "age": 50, "dx_category": "Behavioral Health", "risk_score": 3.538, "er_visits": 1, "allowed_cost": 907.59}]};
+const greenD = '#3C8A32', green = '#56B948', blue = '#0982C6', orange = '#F8971F', grey = '#C7CEC9';
+Chart.defaults.font.family = "Inter, sans-serif";
+Chart.defaults.font.size = 12;
+Chart.defaults.color = '#657068';
+Chart.defaults.borderColor = 'rgba(0,0,0,0.06)';
+
+function toggleTable(btn){
+  const id = btn.dataset.target;
+  const el = document.getElementById(id);
+  const open = el.classList.toggle('show');
+  btn.classList.toggle('active', open);
+  btn.textContent = open ? 'Hide data' : 'View data';
+}
+document.querySelectorAll('.btn-view').forEach(b => b.addEventListener('click', () => toggleTable(b)));
+
+// ---------------- KPIs ----------------
+const kpiContent = {
+  members: () => `<h3>Members analyzed</h3><p>${DATA.headline.n_members.toLocaleString()} members,
+    observed monthly for 18 months (${DATA.headline.n_member_months.toLocaleString()} member-month
+    records total) — split roughly evenly into a group enrolled in the Care Management Program
+    and a similar control group that wasn't.</p>`,
+  concentration: () => {
+    const hi = DATA.module_a_population.risk_tiers.find(t=>t.risk_tier==='High');
+    return `<h3>Cost concentration</h3><p>The highest-risk third of members (${hi.n_members} people)
+      account for <b>${hi.total_cost_share_pct}%</b> of total spend — about 1.5× their proportional
+      share. See the full breakdown in the "Cost concentration by risk tier" panel below.</p>`;
+  },
+  did: () => `<h3>Program cost impact</h3><p>Members enrolled in the program showed a
+    <b>${DATA.module_d_program_evaluation.did_cost_pct}%</b> change in allowed cost
+    (≈$${Math.abs(DATA.module_d_program_evaluation.did_cost_dollars).toFixed(0)}/member-month)
+    relative to the control group's own trend over the same period, estimated via
+    difference-in-differences (p &lt; 0.001). Full chart in the "Program impact" panel.</p>`,
+  auc: () => `<h3>Risk model accuracy</h3><p>AUC of <b>${DATA.headline.risk_auc}</b> on members the
+    model never trained on (1.0 = perfect, 0.5 = random guessing). See the ROC curve and feature
+    importance in the "Risk-stratification model" panel.</p>`,
+};
+document.querySelectorAll('[data-kpi]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const panel = document.getElementById('kpi-detail');
+    const key = btn.dataset.kpi;
+    const already = panel.classList.contains('show') && panel.dataset.key === key;
+    if(already){ panel.classList.remove('show'); panel.dataset.key=''; return; }
+    panel.innerHTML = kpiContent[key]();
+    panel.dataset.key = key;
+    panel.classList.add('show');
+  });
+});
+
+document.getElementById('k-members').textContent = DATA.headline.n_members.toLocaleString();
+document.getElementById('k-members-ctx').textContent = DATA.headline.n_member_months.toLocaleString() + ' member-month records';
+document.getElementById('k-concentration').textContent = DATA.headline.high_tier_cost_share_pct + '%';
+document.getElementById('k-concentration-ctx').textContent = 'held by the highest-risk third of members';
+document.getElementById('k-did').textContent = DATA.headline.did_cost_pct + '%';
+document.getElementById('k-did-ctx').textContent = 'change in cost post-launch vs. control';
+document.getElementById('k-auc').textContent = DATA.headline.risk_auc.toFixed(3);
+document.getElementById('k-auc-ctx').textContent = 'held-out test accuracy, 1.0 = perfect';
+
+// ---------------- Panel 1: risk tiers ----------------
+const tiers = DATA.module_a_population.risk_tiers;
+new Chart(document.getElementById('chart-tiers'), {
+  type:'bar',
+  data:{
+    labels: tiers.map(t=>t.risk_tier),
+    datasets:[
+      {label:'% of members', data: tiers.map(t=>t.n_members_share_pct), backgroundColor: grey, borderRadius:4, maxBarThickness:48},
+      {label:'% of total cost', data: tiers.map(t=>t.total_cost_share_pct), backgroundColor: orange, borderRadius:4, maxBarThickness:48},
+    ]
+  },
+  options:{ responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{position:'bottom'}},
+    scales:{ y:{ticks:{callback:v=>v+'%'}}, x:{grid:{display:false}} } }
+});
+tiers.forEach(t=>{
+  document.getElementById('tbody-tiers').innerHTML += `<tr>
+    <td>${t.risk_tier}</td><td class="num">${t.n_members}</td>
+    <td class="num">${t.n_members_share_pct}%</td><td class="num">${t.total_cost_share_pct}%</td>
+    <td class="num">$${t.avg_monthly_cost.toFixed(0)}</td></tr>`;
+});
+
+// ---------------- Panel 2: diagnosis ----------------
+const dx = DATA.module_a_population.diagnosis_cost;
+new Chart(document.getElementById('chart-dx'), {
+  type:'bar',
+  data:{ labels: dx.map(d=>d.dx_category), datasets:[{data: dx.map(d=>d.avg_monthly_cost), backgroundColor: blue, borderRadius:4, maxBarThickness:40}] },
+  options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>'$'+c.raw.toFixed(0)+' / member-month'}}},
+    scales:{ x:{ticks:{callback:v=>'$'+v}}, y:{grid:{display:false}} } }
+});
+dx.forEach(d=>{
+  document.getElementById('tbody-dx').innerHTML += `<tr><td>${d.dx_category}</td><td class="num">${d.n_members}</td><td class="num">$${d.avg_monthly_cost.toFixed(0)}</td></tr>`;
+});
+
+// ---------------- Panel 3: cost drivers ----------------
+document.getElementById('r2').textContent = DATA.module_b_cost_drivers.r_squared;
+const drivers = DATA.module_b_cost_drivers.drivers;
+new Chart(document.getElementById('chart-drivers'), {
+  type:'bar',
+  data:{ labels: drivers.map(d=>d.factor),
+    datasets:[{data: drivers.map(d=>d.dollars_per_member_month), backgroundColor: drivers.map(d=>d.pvalue<0.05?green:grey), borderRadius:4}] },
+  options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>'$'+c.raw.toFixed(2)+' / member-month'}}},
+    scales:{ x:{ticks:{callback:v=>'$'+v}}, y:{grid:{display:false}} } }
+});
+drivers.forEach(d=>{
+  const sig = d.pvalue < 0.05;
+  document.getElementById('tbody-drivers').innerHTML += `<tr><td>${d.factor}</td>
+    <td class="num">$${d.dollars_per_member_month.toFixed(2)}</td>
+    <td class="num">${d.pvalue < 0.001 ? '<0.001' : d.pvalue}</td>
+    <td class="${sig?'sig-yes':'sig-no'}">${sig?'Yes':'No'}</td></tr>`;
+});
+
+// ---------------- Panel 4: risk model ----------------
+const rm = DATA.module_c_risk_model;
+new Chart(document.getElementById('chart-roc'), {
+  type:'line',
+  data:{ labels: rm.roc_fpr,
+    datasets:[
+      {label:`Model (AUC ${rm.auc})`, data: rm.roc_tpr, borderColor: green, backgroundColor:'transparent', borderWidth:2, pointRadius:0, tension:0.15},
+      {label:'Random guess', data: rm.roc_fpr, borderColor: grey, borderDash:[4,4], borderWidth:1, pointRadius:0},
+    ]},
+  options:{ responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{position:'bottom'}, title:{display:true, text:'ROC curve', font:{weight:'600', size:13}, color:'#1E2A24'}},
+    scales:{ x:{title:{display:true,text:'False positive rate'}}, y:{title:{display:true,text:'True positive rate'}} } }
+});
+const featLabels = {age:'Age', risk_score:'Chronic risk score', pre_avg_cost:'Pre-period avg. cost', pre_avg_er:'Pre-period ER visits', treated:'Enrolled in program'};
+const feats = Object.entries(rm.feature_importance).sort((a,b)=>b[1]-a[1]);
+new Chart(document.getElementById('chart-importance'), {
+  type:'bar',
+  data:{ labels: feats.map(f=>featLabels[f[0]]||f[0]), datasets:[{data: feats.map(f=>f[1]), backgroundColor: blue, borderRadius:4}] },
+  options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{display:false}, title:{display:true, text:'Feature importance', font:{weight:'600', size:13}, color:'#1E2A24'}},
+    scales:{ y:{grid:{display:false}} } }
+});
+feats.forEach(f=>{
+  document.getElementById('tbody-model').innerHTML += `<tr><td>${featLabels[f[0]]||f[0]}</td><td class="num">${f[1]}</td></tr>`;
+});
+
+// ---------------- Panel 5: program evaluation ----------------
+const ev = DATA.module_d_program_evaluation;
+document.getElementById('chip-cost').textContent = ev.did_cost_pct + '% ($' + Math.abs(ev.did_cost_dollars).toFixed(0) + '/member-month)';
+document.getElementById('chip-er').textContent = ev.did_er_pct + '% fewer ER visits';
+new Chart(document.getElementById('chart-trend'), {
+  type:'line',
+  data:{ labels: ev.trend_months.map(m=>'M'+m),
+    datasets:[
+      {label:'Control', data: ev.trend_control, borderColor: grey, backgroundColor:'transparent', borderWidth:2, pointRadius:2, tension:0.25},
+      {label:'Treated', data: ev.trend_treated, borderColor: green, backgroundColor:'transparent', borderWidth:2, pointRadius:2, tension:0.25},
+    ]},
+  options:{ responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{position:'bottom'}},
+    scales:{ y:{title:{display:true,text:'Avg. ER visits / member-month'}}, x:{grid:{display:false}} } },
+  plugins:[{
+    id:'launchLine',
+    afterDraw(chart){
+      const x = chart.scales.x.getPixelForValue(ev.launch_month);
+      const y = chart.scales.y; const ctx = chart.ctx;
+      ctx.save(); ctx.strokeStyle = orange; ctx.setLineDash([4,4]); ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(x, y.top); ctx.lineTo(x, y.bottom); ctx.stroke(); ctx.restore();
+    }
+  }]
+});
+ev.trend_months.forEach((m,i)=>{
+  document.getElementById('tbody-did').innerHTML += `<tr><td class="num">${m}</td><td class="num">${ev.trend_control[i]}</td><td class="num">${ev.trend_treated[i]}</td></tr>`;
+});
+
+// ---------------- Panel 6: raw explorer ----------------
+let rawData = DATA.raw_sample.slice();
+let sortKey = 'member_id', sortDir = 1;
+function renderRaw(){
+  const text = document.getElementById('filter-text').value.toLowerCase();
+  const group = document.getElementById('filter-group').value;
+  const period = document.getElementById('filter-period').value;
+  let rows = rawData.filter(r=>
+    (!text || String(r.member_id).includes(text) || r.dx_category.toLowerCase().includes(text)) &&
+    (!group || r.group === group) &&
+    (!period || r.period === period)
+  );
+  rows.sort((a,b)=> (a[sortKey] > b[sortKey] ? 1 : -1) * sortDir);
+  document.getElementById('raw-body').innerHTML = rows.slice(0,150).map(r=>`<tr>
+    <td class="num">${r.member_id}</td><td class="num">${r.month}</td><td>${r.group}</td><td>${r.period}</td>
+    <td class="num">${r.age}</td><td>${r.dx_category}</td><td class="num">${r.risk_score}</td>
+    <td class="num">${r.er_visits}</td><td class="num">$${r.allowed_cost.toFixed(2)}</td></tr>`).join('');
+  document.getElementById('raw-count').textContent = `Showing ${Math.min(rows.length,150)} of ${rows.length} matching records (${DATA.raw_sample.length} total in this sample).`;
+}
+document.getElementById('filter-text').addEventListener('input', renderRaw);
+document.getElementById('filter-group').addEventListener('change', renderRaw);
+document.getElementById('filter-period').addEventListener('change', renderRaw);
+document.querySelectorAll('th.sortable').forEach(th=>{
+  th.addEventListener('click', ()=>{
+    const k = th.dataset.k;
+    sortDir = (sortKey === k) ? -sortDir : 1;
+    sortKey = k;
+    renderRaw();
+  });
+});
+renderRaw();
+</script>
+</body>
+</html>
